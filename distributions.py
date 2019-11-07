@@ -63,9 +63,10 @@ def flux_distribution_6D(grid, Ti, mass, vx=0., gamma=0., vx_pert=0.):
         num_vels = 100
         vels = np.linspace(-6*vth, 6*vth, num_vels)
         dist = np.array([weighted_gaussian(vel, vx, vth) for vel in vels])
+        dist[vels>=0] = 0.
         dist /= np.sum(dist)
         r[3] = -np.abs(np.random.choice(vels, p=dist)) + np.random.uniform(-1, 1)*(vels[1] - vels[0])/2.
-        r[3] += vx
+        #r[3] += vx
         if np.random.uniform(0, 1) < gamma:
             r[3] = vx_pert*vth
         yield r
