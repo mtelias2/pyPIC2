@@ -132,6 +132,42 @@ class Grid:
         #end if
     #end def weight_particles_to_grid_boltzmann
 
+    def weight_particles_to_grid_boltzmann_neumann(self, particles, dt):
+        self.rho[:] = 0.0
+        self.n[:] = 0.0
+
+        for particle_index, particle in enumerate(particles):
+            if particle.is_active():
+                index_l = int(np.floor(particle.x/self.dx))
+                index_r = (index_l + 1)
+                w_r = (particle.x%self.dx)/self.dx
+                w_l = 1.0 - w_r
+
+                self.rho[index_l] += particle.charge_state*e*particle.p2c/self.dx*w_l
+                self.rho[index_r] += particle.charge_state*e*particle.p2c/self.dx*w_r
+                self.n[index_l] += particle.p2c/self.dx*w_l
+                self.n[index_r] += particle.p2c/self.dx*w_r
+            #end if
+        #end for
+
+        if self.n0 == None: #This is only true for the first timestep.
+            eta = np.exp(self.phi/self.Te/11600.)
+            self.p_old = np.trapz(eta, self.domain)
+            self.n0 = 0.9*np.average(self.n)
+            self.rho0 = e*self.n0
+        else:
+            eta = np.exp(self.phi/self.Te/11600.)
+            p_new = np.trapz(eta, self.domain)
+            q_new = eta[0] + eta[-1]
+            #q_new = 0.
+            r_new = 2.*self.added_particles/dt
+            fn = np.sqrt(self.ve*q_new*dt/p_new)
+            self.n0 = self.n0*( (1.0 - fn)*self.p_old/p_new + fn - fn*fn/4.) + r_new*dt/p_new
+            self.rho0 = self.n0*e
+            self.p_old = p_new
+        #end if
+    #end def weight_particles_to_grid_boltzmann
+
     def differentiate_phi_to_E_dirichlet(self):
         '''
         Find electric field on the grid from the negative differntial of the

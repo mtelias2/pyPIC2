@@ -622,6 +622,32 @@ class Particle:
         #end if
     #end def apply_BCs_dirichlet
 
+    def apply_BCs_dirichlet_neumann(self, grid):
+        '''
+        Set particle to inactive when it's x-coordinate exceeds either wall in a
+        dirichlet-dirichlet boundary condition case.
+
+        Args:
+            grid (Grid): grid object with which the particle is associated
+
+        Tests:
+            >>> particle = Particle(1.0, 1.0, 1.0, 1.0, 1)
+            >>> grid = Grid(5, 1.0, 1.0)
+            >>> particle._initialize_6D(grid)
+            >>> particle.r[0] = grid.length + 1.0
+            >>> particle.apply_BCs_dirichlet(grid)
+            >>> particle.is_active()
+            False
+        '''
+        if self.r[0] < 0.0:
+            self.active = 0
+            self.at_wall = 1
+        elif self.r[0] > grid.length:
+            self.r[3] = -self.r[3]
+            self.r[0] = grid.length - (self.r[0] - grid.length)
+        #end if
+    #end def apply_BCs_dirichlet
+
     def reactivate(self, distribution, grid, time, p2c, m, charge_state, Z):
         '''
         Re-activate an inactive particle. This function pulls an r vector
