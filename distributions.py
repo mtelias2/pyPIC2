@@ -27,8 +27,9 @@ def source_distribution_6D(grid, Ti, mass, vx=0.):
         vth = np.sqrt(kb*Ti/mass)
         r = np.empty(7)
         #r[0] = np.random.uniform(0.0, grid.length)
-        r[0] = np.random.normal(grid.length/2, grid.length/12.0)
-        r[0] %= grid.length
+        #r[0] = np.random.normal(grid.length/2, grid.length/12.0)
+        #r[0] %= grid.length
+        r[0] = np.random.uniform(0., grid.length)
         r[1:3] = 0.
         r[3:6] = np.random.normal(0.0, vth, 3) + vx
         yield r

@@ -622,6 +622,14 @@ class Particle:
         #end if
     #end def apply_BCs_dirichlet
 
+    def apply_BCs_dirichlet_reflection(self, grid):
+        if self.r[0] < 0:
+            self.active = 0
+            self.at_wall = 1
+        elif self.r[0] > grid.length:
+            self.r[3] = -self.r[3]
+            self.r[0] = grid.length - (self.r[0] - grid.length)
+
     def reactivate(self, distribution, grid, time, p2c, m, charge_state, Z):
         '''
         Re-activate an inactive particle. This function pulls an r vector
