@@ -5,7 +5,7 @@ import numpy as np
 import scipy.linalg as la
 import matplotlib.pyplot as plt
 
-from constants import *
+from constants.constants import *
 
 class Fluid:
     def __init__(self, L, psi, vpp, Ti, Te, n0, u0, omega_c, omega, mi, num_cycles, num_steps_per_gyro=500):
@@ -51,8 +51,8 @@ class Fluid:
         self.phi = np.ones((self.num_timesteps, self.ng))
         self.E = np.zeros((self.num_timesteps, self.ng))
 
-
         self.dt = 2.*np.pi/self.omega/self.num_timesteps_per_cycle
+        #self.dt = 0.01
 
         self.A = np.diag(-2*np.ones(self.ng)) + np.diag(np.ones(self.ng - 1), 1) + np.diag(np.ones(self.ng - 1), -1)
         self.A[0, 0] = -3.
@@ -187,13 +187,13 @@ def main():
     L = 100
     num_debye = 100
     psi = np.arccos(1)
-    vpp = 200 #peak-peak voltage
+    vpp = 0 #peak-peak voltage
     Ti = 3
     Te = 3
     n0 = 1e18
     u0 = 1.1
     omega_c = 0.1
-    omega = 1.
+    omega = 0.
     mi = mp
     num_cycles = 8
     f = Fluid(L, psi, vpp, Ti, Te, n0, u0, omega_c, omega, mi, num_cycles)
