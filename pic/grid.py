@@ -168,6 +168,8 @@ class Grid:
     #end def differentiate_phi_to_E
 
     def differentiate_phi_to_E(self):
+        #in theory, different BCs should have different differentiation, but
+        #currently it doesn't matter
         self.differentiate_phi_to_E_dirichlet()
     #end def differentiate_phi_to_E
 
