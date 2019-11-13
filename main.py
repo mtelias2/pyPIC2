@@ -10,7 +10,6 @@ import itertools
 import pickle
 
 import pic.dirichlet_neumann
-import pic
 
 def main():
     run_tests()

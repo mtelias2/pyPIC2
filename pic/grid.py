@@ -24,9 +24,9 @@ class Grid:
         self.ve = np.sqrt(8./np.pi*kb*self.Te/me)
         self.added_particles = 0
         self.bc = bc
-        if bc == 'dirichlet-dirichlet':
+        if self.bc == 'dirichlet-dirichlet':
             self._fill_laplacian_dirichlet()
-        elif bc == 'dirichlet-neumann':
+        elif self.bc == 'dirichlet-neumann':
             self._fill_laplacian_dirichlet_neumann()
             print(self.A)
         elif type(bc) != type(''):
@@ -79,7 +79,7 @@ class Grid:
 
         Tests:
             This test makes sure that particles are weighted correctly.
-            
+
             >>> from pic.particle import Particle
             >>> particle = Particle(1.0, 1.0, 1.0, 1.0, 1)
             >>> grid = Grid(101, 1.0, 1.0)
@@ -113,9 +113,9 @@ class Grid:
             #end if
         #end for
 
-        #if self.bc=='dirichlet-neumann':
-        #    self.n[-1] *= 2
-        #    self.rho[-1] *= 2
+        if self.bc=='dirichlet-neumann':
+            self.n[-1] *= 2
+            self.rho[-1] *= 2
 
         if self.n0 == None: #This is only true for the first timestep.
             eta = np.exp(self.phi/self.Te/11600.)
@@ -165,6 +165,10 @@ class Grid:
         #end for
         self.E[0]  = -(self.phi[1]  - self.phi[0])/self.dx
         self.E[-1] = -(self.phi[-1] - self.phi[-2])/self.dx
+    #end def differentiate_phi_to_E
+
+    def differentiate_phi_to_E(self):
+        self.differentiate_phi_to_E_dirichlet()
     #end def differentiate_phi_to_E
 
     def _fill_laplacian_dirichlet(self):
@@ -232,6 +236,12 @@ class Grid:
         phi[:] = -sppla.inv(A).dot(self.rho)*dx2
         self.phi = phi - np.min(phi)
     #end def solve_for_phi_dirichlet
+
+    def solve_for_phi(self):
+        if self.bc == 'dirichlet-neumann':
+            self.solve_for_phi_dirichlet_neumann_boltzmann()
+        elif self.bc =='dirichlet-dirichlet':
+            self.solve_for_phi_dirichlet_boltzmann()
 
     def solve_for_phi_dirichlet_boltzmann(self):
         '''

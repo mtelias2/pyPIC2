@@ -118,7 +118,7 @@ def pic_iead():
                 colors[particle_index] = particle.charge_state
 
                 #Interpolate E, push in time, and apply BCs
-                particle.interpolate_electric_field_dirichlet(grid)
+                particle.interpolate_electric_field(grid)
                 particle.push_6D(dt)
                 particle.apply_BCs_dirichlet(grid)
 
@@ -384,7 +384,7 @@ def pic_bca_aps():
         redeposited = 0
         for particle_index, particle in enumerate(particles):
             if particle.is_active():
-                particle.interpolate_electric_field_dirichlet(grid)
+                particle.interpolate_electric_field(grid)
                 particle.push_6D(dt)
                 particle.apply_BCs_dirichlet(grid)
 
@@ -728,7 +728,7 @@ def pic_bca():
                     impurity_angles_out.append(impurity_particle_out.get_angle_wrt_wall())
 
                 #Interpolate E, push in time, and apply wall BCs
-                particle.interpolate_electric_field_dirichlet(grid)
+                particle.interpolate_electric_field(grid)
                 particle.push_6D(dt)
                 particle.apply_BCs_dirichlet(grid)
 

@@ -256,7 +256,7 @@ class Particle:
         #end if
     #end def set_x_direction
 
-    def interpolate_electric_field_dirichlet(self, grid):
+    def interpolate_electric_field(self, grid):
         '''
         Interpolates electric field values from grid to particle position
         assuming Dirichlet-Dirichlet boundary conditions.
@@ -271,7 +271,7 @@ class Particle:
         >>> grid = Grid(100, 1.0, 1.0)
         >>> particle._initialize_6D(grid)
         >>> grid.E[:] = 1.0
-        >>> particle.interpolate_electric_field_dirichlet(grid)
+        >>> particle.interpolate_electric_field(grid)
         >>> particle.E[0]
         1.0
         '''

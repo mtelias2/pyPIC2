@@ -92,8 +92,8 @@ def dirichlet_neumann_test():
         grid.weight_particles_to_grid_boltzmann(particles, dt)
         #grid.smooth_rho()
         grid.reset_added_particles()
-        grid.solve_for_phi_dirichlet_neumann_boltzmann()
-        grid.differentiate_phi_to_E_dirichlet()
+        grid.solve_for_phi()
+        grid.differentiate_phi_to_E()
 
         #Begin particle loop
 
@@ -104,7 +104,7 @@ def dirichlet_neumann_test():
         for particle_index, particle in enumerate(particles):
             if particle.is_active():
 
-                particle.interpolate_electric_field_dirichlet(grid)
+                particle.interpolate_electric_field(grid)
                 particle.push_6D(dt)
 
                 #particle.apply_BCs_dirichlet_neumann(grid)
