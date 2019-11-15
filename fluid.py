@@ -33,7 +33,7 @@ class Fluid:
         self.dx = self.L/self.ng
         self.cs = np.sqrt(Te*e/mi)
         self.omega_p = np.sqrt(n0*e*e/mi/epsilon0)
-        self.meu = np.sqrt(mi/(me*e*np.pi))
+        self.meu = np.sqrt(mi/(me*2*np.pi))
         self.B = self.omega_p*omega_c*mi/e
 
         self.num_timesteps = self.num_timesteps_per_cycle*self.num_cycles
@@ -69,8 +69,7 @@ class Fluid:
         ni1 =  self.ni[t, :]
 
         for n in range(1, self.ng):
-            a = self.dt/self.dx*(self.ni[t, n]*self.ux[t, n] - self.ni[t, n - 1]*self.ux[t, n - 1])
-            ni1[n] = self.ni[t, n] - a
+            ni1[n] = self.ni[t, n] - self.dt/self.dx*(self.ni[t, n]*self.ux[t, n] - self.ni[t, n - 1]*self.ux[t, n - 1])
         #end for
 
         self.ni[t + 1, :] = ni1
@@ -81,18 +80,14 @@ class Fluid:
 
         t = self.t
 
-        ux1 = np.zeros(self.ng)
-        uy1 = np.zeros(self.ng)
-        uz1 = np.zeros(self.ng)
-
-        ux1[0] = self.ux[t, 0]
-        uy1[0] = self.uy[t, 0]
-        uz1[0] = self.uz[t, 0]
+        ux1 = self.ux[t, :]
+        uy1 = self.uy[t, :]
+        uz1 = self.uz[t, :]
 
         for n in range(1, self.ng):
             #UxK(n)=Ux(n) -Delt*Ux(n)*(Ux(n)-Ux(n-1))/Delx + (-Delt*Efield(n)) -( Delt*omegaC*Uz(n)*by)
             ux1[n] = self.ux[t, n] - self.dt*self.ux[t, n]*(self.ux[t, n] - self.ux[t, n - 1])/self.dx + \
-                (-self.dt*self.E[t, n]) - self.dt*self.omega_c*self.uz[t, n]*self.by
+                (self.dt*self.E[t, n]) - self.dt*self.omega_c*self.uz[t, n]*self.by
 
             #UyK(n)=Uy(n) - Delt*Ux(n)*(Uy(n)-Uy(n-1))/Delx +  Delt*omegaC*Uz(n)*bx
             uy1[n] = self.uy[t, n] - self.dt*self.ux[t, n]*(self.uy[t, n] - self.uy[t, n - 1])/self.dx + \
@@ -129,7 +124,7 @@ class Fluid:
             phi0 = -np.log(self.u0 / (self.meu*self.bx*np.cosh(B)))
         else:
             T2 = int(np.floor(self.t - self.num_timesteps_per_cycle/2))
-            phi0 = -np.log( (self.ni[t - 1, N]*self.ux[t - 1, N]+ self.ni[t - T2, N]*self.ux[t - T2, N] )/(self.meu*self.bx*(np.exp(B) + np.exp(-B))))
+            phi0 = -np.log( (self.ni[t - 1, n]*self.ux[t - 1, n]+ self.ni[t - T2, n]*self.ux[t - T2, n] )/(self.meu*self.bx*(np.exp(B) + np.exp(-B))))
         #end if
 
         phi1 = phi0*np.ones(self.ng)
@@ -156,7 +151,7 @@ class Fluid:
 
         #phi1 = phi1 - np.min(phi1)
 
-        self.phi[t + 1, :] = phi1
+        self.phi[t, :] = phi1
 
     #end def solve_phi
 
@@ -164,21 +159,23 @@ class Fluid:
 
         t = self.t
 
-        E1 = self.E[t - 1, :]
+        E1 = self.E[t, :]
 
         for n in range(1, self.ng - 1):
-            E1[n] = -(self.phi[t + 1, n + 1] - self.phi[t + 1, n - 1])/self.dx/2.
+            E1[n] = -(self.phi[t, n + 1] - self.phi[t, n - 1])/self.dx/2.
         #end for
 
-        E1[0] = -(self.phi[t + 1, 1]- self.phi[t + 1, 0])/self.dx
-        E1[-1] = -(self.phi[t + 1, -1] - self.phi[t + 1, -2])/self.dx
+        #E1[0] = -(self.phi[t + 1, 1]- self.phi[t + 1, 0])/self.dx
+        E1[0] = 0.
+        E1[-1] = -(self.phi[t, -1] - self.phi[t, -2])/self.dx
 
-        self.E[t + 1, :] = E1
+        self.E[t, :] = E1
     #end def differentiate_phi_to_E
 
     def advance(self):
         self.solve_phi()
         self.differentiate_phi_to_E()
+
         self.solve_momentum()
         self.solve_ni()
         self.t += 1
@@ -187,14 +184,14 @@ def main():
     L = 100
     num_debye = 100
     psi = np.arccos(1)
-    vpp = 0 #peak-peak voltage
+    vpp = 200 #peak-peak voltage
     Ti = 3
     Te = 3
     n0 = 1e18
     u0 = 1.1
     omega_c = 0.1
-    omega = 0.
-    mi = mp
+    omega = 1.0
+    mi = 2*mp
     num_cycles = 8
     f = Fluid(L, psi, vpp, Ti, Te, n0, u0, omega_c, omega, mi, num_cycles)
 
@@ -206,19 +203,19 @@ def main():
 
     delay = 0.001
 
-    for i in range(100):
+    for i in range(f.num_timesteps):
         f.advance()
 
         plt.figure(1)
         plt.clf()
         plt.title('Phi')
-        plt.plot(f.phi[f.t, :])
+        plt.plot(f.phi[f.t-1, :])
         plt.pause(delay)
 
         plt.figure(2)
         plt.clf()
         plt.title('E')
-        plt.plot(f.E[f.t, :])
+        plt.plot(f.E[f.t-1, :])
         plt.pause(delay)
 
         plt.figure(3)
@@ -231,7 +228,7 @@ def main():
 
         plt.figure(4)
         plt.clf()
-        plt.title('Ni')
+        plt.title('ni')
         plt.plot(f.ni[f.t, :])
         plt.pause(delay)
 
