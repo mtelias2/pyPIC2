@@ -306,6 +306,10 @@ class Grid:
         tolerance = 1e-9
         iter_max = 1000
         iter = 0
+        
+        #Setting the BC
+        self.BC0=0
+        self.BC1=0
 
         phi = np.zeros(self.ng)
         D = np.zeros((self.ng, self.ng))
@@ -316,9 +320,11 @@ class Grid:
         c2 = self.rho/epsilon0
 
         while (residual > tolerance) and (iter < iter_max):
-            F = np.dot(self.A,phi) - dx2*c0*np.exp(c1*(phi-self.phi0)) + dx2*c2
-            F[0] = phi[0]*0.
-            F[-1] = phi[-1]*0.
+            for i in range(1,self.ng-1):
+                F[i]+= -dx2*c0*np.exp(c1*(phi[i]-self.phi0)) + dx2*c2[i]
+
+            F[0]  -= self.BC0
+            F[-1] -= self.BC1
 
             np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*(phi-self.phi0)))
 
@@ -367,7 +373,7 @@ class Grid:
 
         #Setting the BC
         self.BC0=0
-        Self.BC1=0
+        self.BC1=0
 
         dx2 = self.dx*self.dx
         c0 = e*self.n0/epsilon0
@@ -376,11 +382,11 @@ class Grid:
 
         while (residual > tolerance) and (iter < iter_max):
             F = np.dot(self.A,phi)
-            for i in range(1,self.ng-1)
+            for i in range(1,self.ng-1):
                 F[i]+= -dx2*c0*np.exp(c1*(phi[i]-self.phi0)) + dx2*c2[i]
 
             F[0]  -= self.BC0
-            F[-1] -= Self.BC1
+            F[-1] -= self.BC1
 
             np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*(phi-self.phi0)))
 
