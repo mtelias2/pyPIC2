@@ -7,15 +7,30 @@ from constants import *
 
 class Grid:
     def __init__(self, ng, length, Te, bc='dirichlet-dirichlet'):
+        '''
+        This function creates the grid space for the simulations
+        Args:
+            ng          total number of grid grid points
+            length      Total length of simulation in physical units
+            Te          Election temperature
+            bc          Boundary condition type
+                    currently on Drichlet Driechlet
+        '''
         self.ng = ng
         assert self.ng > 1, 'Number of grid points must be greater than 1'
         self.length = length
         assert self.length > 0.0, 'Length must be greater than 0'
         self.domain = np.linspace(0.0, length, ng)
+
         self.dx = self.domain[1] - self.domain[0]
-        self.rho = np.zeros(ng)
-        self.phi = np.zeros(ng)
-        self.E = np.zeros(ng)
+        #assuming uniform grid space
+
+        self.rho = np.zeros(ng)#i think density difference of charges
+
+        self.phi = np.zeros(ng) #electric potential
+
+        self.E = np.zeros(ng) #electric field
+
         self.n = np.zeros(ng)
         self.n0 = None
         self.rho0 = None
@@ -114,10 +129,36 @@ class Grid:
         #    self.n[-1] *= 2
         #    self.rho[-1] *= 2
 
+
+    def reference_density_update(self,method="Hagelaar",density):
+        '''
+        This function updates the reference density.
+        3 methods will be programed.
+
+        3 other functions will be called depending on the method.
+
+        Hagelaar 2008
+        kwok 2008
+
+        Args:
+            Ion density profile
+            Previous time step total number of electrons
+            Reference density update method
+
+        No tests programed yet
+
+        '''
+        if method=='Hagelaar':
+            self._Hag(density)
+        else:
+            self._Kwok(density)
+
+
+    def _Hag(self,density):
         if self.n0 == None: #This is only true for the first timestep.
             eta = np.exp(self.phi/self.Te/11600.)
             self.p_old = np.trapz(eta, self.domain)
-            self.n0 = 0.9*np.average(self.n)
+            self.n0 = 0.9*density
             self.rho0 = e*self.n0
         else:
             eta = np.exp(self.phi/self.Te/11600.)
@@ -129,8 +170,19 @@ class Grid:
                 r_new*dt/p_new
             self.rho0 = self.n0*e
             self.p_old = p_new
-        #end if
-    #end def weight_particles_to_grid_boltzmann
+
+    def _Kwok(self,density):
+        if self.n0 == None: #This is only true for the first timestep.
+            eta = np.exp(self.phi/self.Te/11600.)
+            self.p_old = np.trapz(eta, self.domain)
+            self.n0 = 0.9*density
+            self.rho0 = e*self.n0
+            Ne_old=density*self.length
+        else:
+            
+            Ne_old=Ne_new
+
+
 
     def differentiate_phi_to_E_dirichlet(self):
         '''
@@ -144,7 +196,7 @@ class Grid:
             E = _____ ~ ___________________
                  dx            2 dx
 
-            And forward difference for boundaries.
+            And forward/backward difference for boundaries.
 
         Tests:
             >>> grid = Grid(6, 5.0, 1.0)
