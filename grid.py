@@ -6,7 +6,7 @@ import scipy.linalg as la
 from constants import *
 
 class Grid:
-    def __init__(self, ng, length, Te, bc='dirichlet-dirichlet'):
+    def __init__(self, ng, length, Te, density, dt, bc='dirichlet-dirichlet'):
         '''
         This function creates the grid space for the simulations
         Args:
@@ -24,6 +24,8 @@ class Grid:
 
         self.dx = self.domain[1] - self.domain[0]
         #assuming uniform grid space
+        self.dt=dt
+        self.density=density
 
         self.rho = np.zeros(ng)#i think density difference of charges
 
@@ -81,7 +83,7 @@ class Grid:
         return Grid(self.ng, self.length, self.Te)
     #end def copy
 
-    def weight_particles_to_grid_boltzmann(self, particles, dt):
+    def weight_particles_to_grid_boltzmann(self, particles):
         '''
         Weight particle densities and charge densities to the grid using a first
         order weighting scheme.
@@ -130,7 +132,7 @@ class Grid:
         #    self.rho[-1] *= 2
 
 
-    def reference_density_update(self,method="Hagelaar",density):
+    def reference_density_update(self,method="Hagelaar"):
         '''
         This function updates the reference density.
         3 methods will be programed.
@@ -148,26 +150,28 @@ class Grid:
         No tests programed yet
 
         '''
+        #Set the reference density for the boltzmann equation
+        self.phi0=0
         if method=='Hagelaar':
-            self._Hag(density)
-        else:
-            self._Kwok(density)
+            self._Hag()
+        #else:
+        #    self._Kwok()
 
 
-    def _Hag(self,density):
+    def _Hag(self):
         if self.n0 == None: #This is only true for the first timestep.
             eta = np.exp(self.phi/self.Te/11600.)
             self.p_old = np.trapz(eta, self.domain)
-            self.n0 = 0.9*density
+            self.n0 = 0.9*self.density
             self.rho0 = e*self.n0
         else:
             eta = np.exp(self.phi/self.Te/11600.)
             p_new = np.trapz(eta, self.domain)
             q_new = eta[0] + eta[-1]
-            r_new = 2.*self.added_particles/dt
-            fn = np.sqrt(self.ve*q_new*dt/p_new)
+            r_new = 2.*self.added_particles/self.dt
+            fn = np.sqrt(self.ve*q_new*self.dt/p_new)
             self.n0 = self.n0*( (1.0 - fn)*self.p_old/p_new + fn - fn*fn/4.) + \
-                r_new*dt/p_new
+                r_new*self.dt/p_new
             self.rho0 = self.n0*e
             self.p_old = p_new
 
@@ -179,7 +183,7 @@ class Grid:
             self.rho0 = e*self.n0
             Ne_old=density*self.length
         else:
-            
+
             Ne_old=Ne_new
 
 
@@ -312,13 +316,11 @@ class Grid:
         c2 = self.rho/epsilon0
 
         while (residual > tolerance) and (iter < iter_max):
-            F = np.dot(self.A,phi) - dx2*c0*np.exp(c1*(phi)) + dx2*c2
+            F = np.dot(self.A,phi) - dx2*c0*np.exp(c1*(phi-self.phi0)) + dx2*c2
             F[0] = phi[0]*0.
             F[-1] = phi[-1]*0.
 
-            np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*phi))
-            D[0,0] = -dx2*c0*c1
-            D[-1,-1] = -dx2*c0*c1
+            np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*(phi-self.phi0)))
 
             J = self.A + D
             J = spp.csc_matrix(J)
@@ -363,19 +365,24 @@ class Grid:
         phi = self.phi
         D = np.zeros((self.ng, self.ng))
 
+        #Setting the BC
+        self.BC0=0
+        Self.BC1=0
+
         dx2 = self.dx*self.dx
         c0 = e*self.n0/epsilon0
         c1 = e/kb/self.Te
         c2 = e*self.n/epsilon0
 
         while (residual > tolerance) and (iter < iter_max):
-            F = np.dot(self.A,phi) - dx2*c0*np.exp(c1*(phi)) + dx2*c2
-            F[0] = phi[0]
-            F[-1] = 0.
+            F = np.dot(self.A,phi)
+            for i in range(1,self.ng-1)
+                F[i]+= -dx2*c0*np.exp(c1*(phi[i]-self.phi0)) + dx2*c2[i]
 
-            np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*(phi)))
-            D[0,0] = -dx2*c0*c1
-            D[-1,-1] = 0.
+            F[0]  -= self.BC0
+            F[-1] -= Self.BC1
+
+            np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*(phi-self.phi0)))
 
             J = self.A + D
             J = spp.csc_matrix(J)

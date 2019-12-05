@@ -62,7 +62,7 @@ def dirichlet_neumann_test():
     print(f'floating potential: {floating_potential}')
 
     #Initialize objects, generators, and counters
-    grid = Grid(ng, L, Te, bc='dirichlet-dirichlet')
+    grid = Grid(ng, L, Te,density, dt, bc='dirichlet-dirichlet')
 
     particles = [Particle(1.*mp, 1, p2c, Ti, Z=1, B0=B, E0=E, grid=grid, vx=vx) \
         for _ in range(N)]
@@ -89,11 +89,12 @@ def dirichlet_neumann_test():
         time += dt
         print(f'timestep: {time_index}')
         print(f'n0: {grid.n0}\nadded_particles: {grid.added_particles}')
-        grid.weight_particles_to_grid_boltzmann(particles, dt)
+        grid.weight_particles_to_grid_boltzmann(particles)
         #grid.smooth_rho()
         grid.reset_added_particles()
+        grid.reference_density_update("Hagelaar")
+
         grid.solve_for_phi_dirichlet_neumann_boltzmann()
-        grid.reference_density_update("Hagelaar",density)
         grid.differentiate_phi_to_E_dirichlet()
 
         #Begin particle loop
