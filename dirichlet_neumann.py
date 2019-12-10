@@ -92,7 +92,8 @@ def dirichlet_neumann_test():
         grid.weight_particles_to_grid_boltzmann(particles)
         #grid.smooth_rho()
         grid.reset_added_particles()
-        grid.reference_density_update("Hagelaar")
+        # options to update density Hagelaar, Elias, Kwok
+        grid.reference_density_update("Kwok")
 
         grid.solve_for_phi_dirichlet_neumann_boltzmann()
         grid.differentiate_phi_to_E_dirichlet()

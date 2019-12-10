@@ -4,6 +4,7 @@ import scipy.sparse.linalg as sppla
 import numpy as np
 import scipy.linalg as la
 from constants import *
+import utils
 
 class Grid:
     def __init__(self, ng, length, Te, density, dt, bc='dirichlet-dirichlet'):
@@ -154,9 +155,10 @@ class Grid:
         self.phi0=0
         if method=='Hagelaar':
             self._Hag()
-        #else:
-        #    self._Kwok()
-
+        elif method=='Kwok':
+            self._Kwok()
+        #elif method=='Elias':
+        #    self._Elias()
 
     def _Hag(self):
         if self.n0 == None: #This is only true for the first timestep.
@@ -175,16 +177,29 @@ class Grid:
             self.rho0 = self.n0*e
             self.p_old = p_new
 
-    def _Kwok(self,density):
+    def _Kwok(self):
         if self.n0 == None: #This is only true for the first timestep.
             eta = np.exp(self.phi/self.Te/11600.)
             self.p_old = np.trapz(eta, self.domain)
-            self.n0 = 0.9*density
+            self.n0 = 0.9*self.density
             self.rho0 = e*self.n0
-            Ne_old=density*self.length
+            Ne_old=self.density*self.length
         else:
 
-            Ne_old=Ne_new
+            #new density is old one - total numebr of particles lost
+            Ne_new = Ne_old
+
+
+
+
+
+            #copying the old density
+            #Ne(t)=Ne(t-1) - v Int_walls(ne(x)dx)
+            Ne_old=Ne_new - (self.ve/4 * ( ) )
+
+
+    #to be defined my method. This method cannot be used for EM codes though.
+    #def _Elias(self):
 
 
 
@@ -306,7 +321,7 @@ class Grid:
         tolerance = 1e-9
         iter_max = 1000
         iter = 0
-        
+
         #Setting the BC
         self.BC0=0
         self.BC1=0
