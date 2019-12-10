@@ -7,7 +7,7 @@ from constants import *
 import utils
 
 class Grid:
-    def __init__(self, ng, length, Te, density, dt, bc='dirichlet-dirichlet'):
+    def __init__(self, ng, length, Te, density, dt,omega,RF_amptitude,alpha, bc='dirichlet-dirichlet'):
         '''
         This function creates the grid space for the simulations
         Args:
@@ -41,6 +41,16 @@ class Grid:
         self.ve = np.sqrt(8./np.pi*kb*self.Te/me)
         self.added_particles = 0
         self.bc = bc
+
+        self.alpha=alpha
+
+        self.omega=omega
+        self.RF_amptitude=RF_amptitude
+
+        # things needed for Elias algorithm might change them later
+        self.Ion_flux_right=None #at index L
+        self.Ion_flux_left=None  #at index 0
+
         if bc == 'dirichlet-dirichlet':
             self._fill_laplacian_dirichlet()
         elif bc == 'dirichlet-neumann':
@@ -133,7 +143,7 @@ class Grid:
         #    self.rho[-1] *= 2
 
 
-    def reference_density_update(self,method="Hagelaar"):
+    def reference_density_update(self,time,method="Hagelaar"):
         '''
         This function updates the reference density.
         3 methods will be programed.
@@ -155,10 +165,10 @@ class Grid:
         self.phi0=0
         if method=='Hagelaar':
             self._Hag()
-        elif method=='Kwok':
-            self._Kwok()
-        #elif method=='Elias':
-        #    self._Elias()
+        #elif method=='Kwok':
+        #    self._Kwok()
+        elif method=='Elias':
+            self._Elias(time)
 
     def _Hag(self):
         if self.n0 == None: #This is only true for the first timestep.
@@ -177,29 +187,61 @@ class Grid:
             self.rho0 = self.n0*e
             self.p_old = p_new
 
-    def _Kwok(self):
-        if self.n0 == None: #This is only true for the first timestep.
-            eta = np.exp(self.phi/self.Te/11600.)
-            self.p_old = np.trapz(eta, self.domain)
-            self.n0 = 0.9*self.density
-            self.rho0 = e*self.n0
-            Ne_old=self.density*self.length
-        else:
+    #def _Kwok(self):
+    #    if self.n0 == None: #This is only true for the first timestep.
+    #        eta = np.exp(self.phi/self.Te/11600.)
+    #        self.p_old = np.trapz(eta, self.domain)
+    #        self.n0 = 0.9*self.density
+    #        self.rho0 = e*self.n0
+    #        Ne_old=self.density*self.length
+    #    else:
 
             #new density is old one - total numebr of particles lost
-            Ne_new = Ne_old
-
+    #        Ne_new = Ne_old
 
 
 
 
             #copying the old density
             #Ne(t)=Ne(t-1) - v Int_walls(ne(x)dx)
-            Ne_old=Ne_new - (self.ve/4 * ( ) )
+    #        Ne_old=Ne_new - (self.ve/4 * ( ) )
 
 
     #to be defined my method. This method cannot be used for EM codes though.
-    #def _Elias(self):
+    def _Elias(self,time):
+        """
+        This method is based on Elias 2020.
+        The codes used are to fit the equaiton specified by the paper
+        Each term is explained but the equations are not.
+        """
+
+        if self.n0 == None: #This is only true for the first timestep.
+            self.n0 = 0.9*self.density
+            self.rho0 = e*self.n0
+            ##Things needed for charge conservation in Elias methods
+            self.Ion_flux_right=0 #at index L
+            self.Ion_flux_left=0  #at index 0
+        else:
+
+            Ji=0  # This term represents the total ion currents at the walls at time step t
+            Ue=0  # This term represents the electron fluid velocity needed to calculate n_0
+            Jd=0  # This term represents the displacement current, I am having troubles including it. and slight doubts about its validity
+            #Jd will be included and tested later otherwise i do not get my phd
+
+            #left and right Boundary conditions just to ease calculations not needed explicitly
+            LBC=self.RF_amptitude*np.sin(self.omega*time)
+            RBC=self.RF_amptitude*np.sin(self.omega*time+np.pi)
+
+            Ji=self.Ion_flux_right-self.Ion_flux_right #difference between right and left
+
+            #equation for Ue might need to be changed check what gives you the right value there is a 3/2 missing somewhere
+            Ue=self.ve*np.cos(self.alpha)*(np.exp(RBC/self.Te/11600.)+np.exp(LBC/self.Te/11600.))/(np.sqrt(np.pi*2))
+
+            self.n0=Ji/Ue
+
+            #reseting for the next iteration
+            self.Ion_flux_left=0.
+            self.Ion_flux_right=0.
 
 
 
@@ -335,6 +377,8 @@ class Grid:
         c2 = self.rho/epsilon0
 
         while (residual > tolerance) and (iter < iter_max):
+
+            F = np.dot(self.A,phi)
             for i in range(1,self.ng-1):
                 F[i]+= -dx2*c0*np.exp(c1*(phi[i]-self.phi0)) + dx2*c2[i]
 

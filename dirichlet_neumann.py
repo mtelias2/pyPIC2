@@ -43,6 +43,10 @@ def dirichlet_neumann_test():
     LD = np.sqrt(kb*Te*epsilon0/e/e/density)
     ion_plasma_frequency = np.sqrt(density*e**2/mp/epsilon0)/2./np.pi
 
+    #user inputs for RF conditions
+    omega=0.5*ion_plasma_frequency
+    RF_amptitude=100
+
     #Numerical parameters
     N = ppc*ng_per_debye*num_debye
     L = num_debye*LD
@@ -62,7 +66,7 @@ def dirichlet_neumann_test():
     print(f'floating potential: {floating_potential}')
 
     #Initialize objects, generators, and counters
-    grid = Grid(ng, L, Te,density, dt, bc='dirichlet-dirichlet')
+    grid = Grid(ng, L, Te,density, dt,omega,RF_amptitude,alpha, bc='dirichlet-dirichlet')
 
     particles = [Particle(1.*mp, 1, p2c, Ti, Z=1, B0=B, E0=E, grid=grid, vx=vx) \
         for _ in range(N)]
@@ -93,9 +97,8 @@ def dirichlet_neumann_test():
         #grid.smooth_rho()
         grid.reset_added_particles()
         # options to update density Hagelaar, Elias, Kwok
-        grid.reference_density_update("Kwok")
-
-        grid.solve_for_phi_dirichlet_neumann_boltzmann()
+        grid.reference_density_update(time,"Elias")
+        grid.solve_for_phi()
         grid.differentiate_phi_to_E_dirichlet()
 
         #Begin particle loop
@@ -111,7 +114,7 @@ def dirichlet_neumann_test():
                 particle.push_6D(dt)
 
                 #particle.apply_BCs_dirichlet_neumann(grid)
-                particle.apply_BCs_dirichlet_reflection(grid)
+                particle.apply_BCs_dirichlet(grid)
 
                 positions[particle_index] = particle.x
                 velocities[particle_index] = particle.v_x/particle.vth
