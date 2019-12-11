@@ -9,11 +9,15 @@ import scipy.sparse.linalg as sppla
 import itertools
 import pickle
 
-import pic.dirichlet_neumann
+from  pic.dirichlet_neumann import *
+import pic.pic_bca
+import fluid.fluid
 
 def main():
     run_tests()
-    pic.dirichlet_neumann.dirichlet_neumann_test()
+    #pic.dirichlet_neumann.dirichlet_neumann_test()
+    #fluid.fluid.simulation()
+    pic.pic_bca.pic_bca_aps()
 #end def main
 
 def run_tests():

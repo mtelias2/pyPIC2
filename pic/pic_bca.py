@@ -1,8 +1,9 @@
-from particle import *
-from grid import *
-from distributions import *
-from convert import *
-from constants import *
+from pic.particle import *
+from pic.grid import *
+from pic.distributions import *
+from io import *
+from constants.constants import *
+from fractal_tridyn.utils.generate_ftridyn_input import *
 
 def pic_iead():
     import generate_ftridyn_input as gen
@@ -68,8 +69,11 @@ def pic_iead():
 
     N = len(particles)
 
-    tridyn_interface_D_B = gen.tridyn_interface('D', 'B')
-    tridyn_interface_wall_wall = gen.tridyn_interface('B', 'B')
+    #tridyn_interface_D_B = gen.tridyn_interface('D', 'B')
+    #tridyn_interface_wall_wall = gen.tridyn_interface('B', 'B')
+
+    tridyn_interface_D_B = tridyn_interface('D', 'B')
+    tridyn_interface_wall_wall = tridyn_interface('B', 'B')
 
     iead_D = np.zeros((num_energies, num_angles))
     iead_B = np.zeros((num_energies, num_angles))
@@ -192,16 +196,16 @@ def pic_iead():
     print(f'num_deposited: {num_deposited_B}, num_sputtered: {num_sputtered_B}, {num_reflected_B}, {num_incident_B}')
 
 def pic_bca_aps():
-    import fractal_tridyn.utils.generate_ftridyn_input as gen
-    density = 1e19
+
+    density = 1e20
     ng_per_LD = 3
     num_LD = 200
-    ppc = 200
-    dt = 8e-11
+    ppc = 50
+    dt = 1e-10
     timesteps = 10000
 
     Ti = 10.*11600
-    Te = 50.*11600
+    Te = 100.*11600
 
     LD = np.sqrt(kb*Te*epsilon0/e/e/density)
     L = num_LD*LD
@@ -209,7 +213,7 @@ def pic_bca_aps():
     N = ng*ppc
     source_N = N
     p2c = density*L/N
-    psi = 86.0
+    psi = 0.0
     alpha = psi*np.pi/180.0
     B0 = 2.
     E0 = 0.
@@ -217,13 +221,13 @@ def pic_bca_aps():
     E = np.array([E0*np.cos(alpha), E0*np.sin(alpha), 0.0])
 
     deletion_step = 1
-    plot_step = 20
+    plot_step = 10
 
     do_plots = True
     checkpoint_saving = 100
     do_checkpoint_saving = True
-    checkpoint_load = 3900
-    load_checkpoint = True
+    checkpoint_load = 0
+    load_checkpoint = False
     write_particles = True
 
     #TRIDYN params
@@ -259,7 +263,13 @@ def pic_bca_aps():
         'symbol': 'H'
     }
 
-    wall = boron
+    lithium = {
+        'Z': 3,
+        'm': 6.94*mp,
+        'symbol': 'Li'
+    }
+
+    wall = lithium
     source = hydrogen
 
     if load_checkpoint:
@@ -269,12 +279,15 @@ def pic_bca_aps():
             grid = pickle.load(grid_file)
         N = len(particles)
     else:
-        grid = Grid(ng, L, Te, bc='dirichlet-dirichlet')
+        grid = Grid(ng, L, Te, bc = 'dirichlet-dirichlet', tracked_ion_Z = 3)
         particles = [Particle(source['m'], 1, p2c, Ti, Z=source['Z'], B0=B, E0=E, grid=grid)
             for _ in range(N)]
 
-    tridyn_interface_source_wall = gen.tridyn_interface(source['symbol'], wall['symbol'])
-    tridyn_interface_wall_wall  = gen.tridyn_interface(wall['symbol'], wall['symbol'])
+    #tridyn_interface_source_wall = gen.tridyn_interface(source['symbol'], wall['symbol'])
+    #tridyn_interface_wall_wall  = gen.tridyn_interface(wall['symbol'], wall['symbol'])
+
+    tridyn_interface_source_wall = tridyn_interface(source['symbol'], wall['symbol'])
+    tridyn_interface_wall_wall  = tridyn_interface(wall['symbol'], wall['symbol'])
 
     source_distribution = source_distribution_6D(grid, Ti, source['m'])
 
@@ -365,6 +378,7 @@ def pic_bca_aps():
         print(f'active particles: {sum(1 for p in particles if p.is_active())}')
         print(f'active {source["symbol"]} particles: {sum(1 for p in particles if p.is_active() and p.Z==source["Z"])}')
         print(f'active  {wall["symbol"]} particles: {sum(1 for p in particles if p.is_active() and p.Z==wall["Z"])}')
+        print(f'active  {wall["symbol"]} ions: {sum(1 for p in particles if p.is_active() and p.charge_state > 0 and p.Z==wall["Z"])}')
 
         active_source_particles.append(sum(1 for p in particles if p.is_active() and p.Z==source["Z"]))
         active_wall_particles.append(sum(1 for p in particles if p.is_active() and p.Z==wall["Z"]))
@@ -394,9 +408,10 @@ def pic_bca_aps():
                 colors[particle_index] = color_dict[particle.Z, particle.charge_state]
                 sizes[particle_index] = size_dict[particle.charge_state]
 
-                if particle.Z == 1 and particle.charge_state == 0 and particle.is_active():
+                if particle.Z == source['Z'] and particle.charge_state == 0 and particle.is_active():
                     particle.attempt_first_ionization(dt, Te, grid)
-                if particle.Z == 5 and particle.charge_state < 3 and particle.is_active():
+
+                if particle.Z == wall['Z'] and particle.charge_state < 3 and particle.is_active():
                     particle.attempt_nth_ionization(dt, Te, grid)
 
                 #particle just deactivated at wall
@@ -422,7 +437,6 @@ def pic_bca_aps():
                         angles_out_source.append(particle.get_angle_wrt_wall())
                         print(particle.v_x/particle.vth, file=f_source_out, flush=True)
                     if particle.Z == wall['Z']:
-                        print('Boron left!')
                         energies_out_wall.append(particle.kinetic_energy/e)
                         angles_out_wall.append(particle.get_angle_wrt_wall())
                         print(particle.v_x/particle.vth, file=f_wall_out, flush=True)
@@ -541,8 +555,10 @@ def pic_bca_aps():
 
             plt.figure(3)
             plt.clf()
-            plt.plot(np.linspace(0., grid.length, grid.ng), grid.rho)
-            plt.axis([0.0, grid.length, 0.0, np.max(grid.rho)])
+            plt.plot(np.linspace(0., grid.length, grid.ng), grid.n)
+            plt.plot(np.linspace(0., grid.length, grid.ng), grid.n0*np.exp(e*(grid.phi - np.max(grid.phi))/kb/grid.Te))
+            print(grid.n0, np.max(grid.n))
+            #plt.axis([0.0, grid.length, 0.0, np.max(grid.rho)])
             plt.draw()
             plt.savefig('pic_bca_rho'+str(time_index))
             plt.pause(0.0001)
@@ -582,10 +598,11 @@ def pic_bca_aps():
 
             plt.figure(8)
             plt.clf()
-            plt.scatter(positions, velocities, s=sizes, c=colors)
-            plt.axis([0.0, grid.length/8, -6, 6.])
+            for charge_state in range(0, grid.tracked_ion_Z + 1):
+                plt.plot(np.linspace(0., grid.length, grid.ng), (grid.tracked_ion_density[charge_state] + grid.tracked_ion_density[charge_state][::-1])/2.)
+            plt.axis([0.0, grid.length/2, 0.0, max([np.max(density) for density in grid.tracked_ion_density])])
             plt.draw()
-            plt.savefig('pic_bca_ps_zoomed'+str(time_index))
+            plt.savefig('pic_bca_tracked_ion_densities'+str(time_index))
             plt.pause(0.0001)
 
     #Create movies from .png plots
@@ -600,6 +617,7 @@ def pic_bca_aps():
     #[iead_wall, iead_source, iead_out_wall, iead_out_source]
 
     breakpoint()
+#end def pic_bca_aps
 
 def pic_bca():
     #Imports and constants
@@ -643,8 +661,13 @@ def pic_bca():
         for _ in range(N)]
 
     #particles += impurities
-    tridyn_interface = gen.tridyn_interface('H', 'B')
-    tridyn_interface_B = gen.tridyn_interface('B', 'B')
+    #tridyn_interface = gen.tridyn_interface('H', 'B')
+    #tridyn_interface_B = gen.tridyn_interface('B', 'B')
+
+    tridyn_interface = tridyn_interface('H', 'B')
+    tridyn_interface_B = tridyn_interface('B', 'B')
+
+
     source_distribution = source_distribution_6D(grid, Ti, mp)#, -3.*particles[0].vth)
     impurity_distribution = source_distribution_6D(grid, Ti, 10.81*mp)#, -3.*impurities[0].vth)
     num_deposited = 0

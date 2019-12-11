@@ -54,13 +54,17 @@ class Fluid:
         self.dt = 2.*np.pi/self.omega/self.num_timesteps_per_cycle
         #self.dt = 0.01
 
+        self._build_laplacian()
+
+    #end def __init__
+
+    def _build_laplacian(self):
         self.A = np.diag(-2*np.ones(self.ng)) + np.diag(np.ones(self.ng - 1), 1) + np.diag(np.ones(self.ng - 1), -1)
         self.A[0, 0] = -3.
         self.A[0, 1] = 4.
         self.A[0, 2] = -1.
         self.A[-1, -1] = 1.
         self.A[-1, -2] = 0.
-    #end def __init__
 
     def solve_ni(self):
 
@@ -115,11 +119,6 @@ class Fluid:
         B = self.vpp*np.cos(self.omega*self.t*self.dt)/2. #???
         t = self.t
 
-        #BC[0] = 0.
-        #BC[self.ng] = -B #???????
-
-        # There's a whole section here that I don't understand
-        # Ah, this is for the RF potential I guess?
         if self.t / self.num_timesteps_per_cycle < 0.5:
             phi0 = -np.log(self.u0 / (self.meu*self.bx*np.cosh(B)))
         else:
@@ -180,18 +179,18 @@ class Fluid:
         self.solve_ni()
         self.t += 1
 
-def main():
+def simulation():
     L = 100
     num_debye = 100
-    psi = np.arccos(1)
-    vpp = 200 #peak-peak voltage
-    Ti = 3
-    Te = 3
-    n0 = 1e18
-    u0 = 1.1
+    psi = 0.
+    vpp = 0 #peak-peak voltage
+    Ti = 10
+    Te = 10
+    n0 = 1e19
+    u0 = 1.
     omega_c = 0.1
     omega = 1.0
-    mi = 2*mp
+    mi = mp
     num_cycles = 8
     f = Fluid(L, psi, vpp, Ti, Te, n0, u0, omega_c, omega, mi, num_cycles)
 
@@ -231,6 +230,3 @@ def main():
         plt.title('ni')
         plt.plot(f.ni[f.t, :])
         plt.pause(delay)
-
-if __name__ == '__main__':
-    main()

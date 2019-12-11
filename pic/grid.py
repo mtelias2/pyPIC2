@@ -7,7 +7,7 @@ import scipy.linalg as la
 from constants.constants import *
 
 class Grid:
-    def __init__(self, ng, length, Te, bc='dirichlet-dirichlet'):
+    def __init__(self, ng, length, Te, bc='dirichlet-dirichlet', tracked_ion_Z = 3):
         self.ng = ng
         assert self.ng > 1, 'Number of grid points must be greater than 1'
         self.length = length
@@ -15,6 +15,8 @@ class Grid:
         self.domain = np.linspace(0.0, length, ng)
         self.dx = self.domain[1] - self.domain[0]
         self.rho = np.zeros(ng)
+        self.tracked_ion_density = [np.zeros(ng) for _ in range(0, tracked_ion_Z + 1)]
+        self.tracked_ion_Z = tracked_ion_Z
         self.phi = np.zeros(ng)
         self.E = np.zeros(ng)
         self.n = np.zeros(ng)
@@ -98,6 +100,8 @@ class Grid:
         '''
         self.rho[:] = 0.0
         self.n[:] = 0.0
+        for charge_state in range(0, self.tracked_ion_Z + 1):
+            self.tracked_ion_density[charge_state][:] = 0.0
 
         for particle_index, particle in enumerate(particles):
             if particle.is_active():
@@ -106,10 +110,16 @@ class Grid:
                 w_r = (particle.x%self.dx)/self.dx
                 w_l = 1.0 - w_r
 
-                self.rho[index_l] += particle.charge_state*e*particle.p2c/self.dx*w_l
-                self.rho[index_r] += particle.charge_state*e*particle.p2c/self.dx*w_r
-                self.n[index_l] += particle.p2c/self.dx*w_l
-                self.n[index_r] += particle.p2c/self.dx*w_r
+                if particle.charge_state > 0:
+                    self.rho[index_l] += particle.charge_state*e*particle.p2c/self.dx*w_l
+                    self.rho[index_r] += particle.charge_state*e*particle.p2c/self.dx*w_r
+                    self.n[index_l] += particle.p2c/self.dx*w_l
+                    self.n[index_r] += particle.p2c/self.dx*w_r
+                    
+                for charge_state in range(0, self.tracked_ion_Z + 1):
+                    if particle.Z == self.tracked_ion_Z and particle.charge_state == charge_state:
+                        self.tracked_ion_density[charge_state][index_l] += particle.p2c/self.dx*w_l
+                        self.tracked_ion_density[charge_state][index_r] += particle.p2c/self.dx*w_r
             #end if
         #end for
 

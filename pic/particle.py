@@ -302,6 +302,7 @@ class Particle:
             1.878E-08, 2.767E-08, 3.806E-08, 4.979E-08, 6.257E-08, 7.590E-08,
             8.901E-08, 1.005E-07, 1.080E-07, 1.079E-07, 9.470E-08, 5.161E-08,
             2.159E-08]
+
         elif self.Z == 1:
              Te = [8.626E-01, 1.011E+00, 2.178E+00, 3.539E+00, 5.146E+00, 7.069E+00,
              9.410E+00, 1.231E+01, 1.598E+01, 2.076E+01, 2.720E+01, 3.625E+01,
@@ -313,17 +314,28 @@ class Particle:
              2.329E-08, 2.624E-08, 2.834E-08, 2.881E-08, 2.627E-08, 1.926E-08,
              8.109E-09, 3.829E-09]
 
+        elif self.Z == 3:
+             Te = [ 8.614E-01, 8.635E-01, 1.403E+00, 2.041E+00, 2.803E+00, 3.730E+00,
+             4.879E+00, 6.335E+00, 8.230E+00, 1.078E+01, 1.437E+01, 1.972E+01,
+             2.828E+01, 4.357E+01, 7.549E+01, 1.617E+02, 5.370E+02, 5.511E+03,
+             8.635E+04]
+
+             R_cm3_s = [ 6.199E-11, 6.296E-11, 8.756E-10, 3.426E-09, 7.950E-09, 1.406E-08,
+             2.113E-08, 2.857E-08, 3.586E-08, 4.259E-08, 4.861E-08, 5.355E-08,
+             5.704E-08, 5.956E-08, 6.091E-08, 5.737E-08, 4.436E-08, 2.049E-08,
+             6.664E-09]
+
         Te_K = [T*11600. for T in Te]
         R_m3_s = [R/1e6 for R in R_cm3_s]
 
-        ionization_rate = np.interp(temperature, Te_K, R_m3_s)
+        ionization_rate_coefficient = np.interp(temperature, Te_K, R_m3_s)
 
         index_l = int(np.floor(self.x/grid.dx))
         index_r = (index_l + 1)
         w_r = (self.x%grid.dx)/grid.dx
         w_l = 1.0 - w_r
         density = w_l*grid.n[index_l] + w_r*grid.n[index_r]
-        probability = density**2 * ionization_rate * grid.dx * dt / self.p2c
+        probability = density**2 * ionization_rate_coefficient * grid.dx * dt / self.p2c
 
         #print(f'p: {probability} mfp: {mfp} n: {density} speed: {self.speed}')
 
@@ -342,6 +354,7 @@ class Particle:
             density (float): background density in m-3
 
         '''
+
         if self.Z == 5:
             if self.charge_state == 0:
                 Te = [8.626E-01, 1.329E+00, 2.160E+00, 3.140E+00, 4.314E+00, 5.741E+00,
@@ -372,22 +385,60 @@ class Particle:
                 5.055E-09, 5.759E-09, 6.382E-09, 6.779E-09, 6.575E-09, 5.269E-09,
                 2.483E-09, 1.829E-09]
 
+        elif self.Z == 3:
+            if self.charge_state == 0:
+                Te = [ 8.614E-01, 8.635E-01, 1.403E+00, 2.041E+00, 2.803E+00, 3.730E+00,
+                4.879E+00, 6.335E+00, 8.230E+00, 1.078E+01, 1.437E+01, 1.972E+01,
+                2.828E+01, 4.357E+01, 7.549E+01, 1.617E+02, 5.370E+02, 5.511E+03,
+                8.635E+04]
+
+                R_cm3_s = [ 6.199E-11, 6.296E-11, 8.756E-10, 3.426E-09, 7.950E-09, 1.406E-08,
+                2.113E-08, 2.857E-08, 3.586E-08, 4.259E-08, 4.861E-08, 5.355E-08,
+                5.704E-08, 5.956E-08, 6.091E-08, 5.737E-08, 4.436E-08, 2.049E-08,
+                6.664E-09]
+            elif self.charge_state == 1:
+                Te = [2.724E+00, 5.621E+00, 1.212E+01, 1.968E+01, 2.863E+01, 3.932E+01,
+                5.233E+01, 6.845E+01, 8.884E+01, 1.155E+02, 1.513E+02, 2.016E+02,
+                2.766E+02, 3.968E+02, 6.111E+02, 1.059E+03, 2.269E+03, 7.533E+03,
+                7.731E+04, 8.593E+04]
+
+                R_cm3_s = [5.636E-22, 1.364E-15, 2.820E-12, 4.070E-11, 1.648E-10, 3.963E-10,
+                7.285E-10, 1.143E-09, 1.619E-09, 2.137E-09, 2.678E-09, 3.221E-09,
+                3.741E-09, 4.198E-09, 4.543E-09, 4.679E-09, 4.401E-09, 3.399E-09,
+                1.547E-09, 1.485E-09]
+            elif self.charge_state == 2:
+                Te = [4.319E+00, 9.100E+00, 1.960E+01, 3.187E+01, 4.634E+01, 6.366E+01,
+                8.472E+01, 1.108E+02, 1.438E+02, 1.869E+02, 2.449E+02, 3.265E+02,
+                4.478E+02, 6.424E+02, 9.893E+02, 1.715E+03, 3.674E+03, 1.219E+04,
+                8.604E+04]
+
+                R_cm3_s = [1.563E-22, 6.541E-16, 1.224E-12, 1.616E-11, 6.099E-11, 1.392E-10,
+                2.459E-10, 3.739E-10, 5.154E-10, 6.617E-10, 8.066E-10, 9.435E-10,
+                1.058E-09, 1.132E-09, 1.147E-09, 1.094E-09, 9.529E-10, 6.707E-10,
+                3.279E-10]
+
         Te_K = [T*11600. for T in Te]
         R_m3_s = [R/1e6 for R in R_cm3_s]
 
-        ionization_rate = np.interp(temperature, Te_K, R_m3_s)
+        ionization_rate_coefficient = np.interp(temperature, Te_K, R_m3_s)
 
         index_l = int(np.floor(self.x/grid.dx))
         index_r = (index_l + 1)
         w_r = (self.x%grid.dx)/grid.dx
         w_l = 1.0 - w_r
-        density = w_l*grid.n[index_l] + w_r*grid.n[index_r]
-        probability = density**2 * ionization_rate * grid.dx * dt / self.p2c
 
-        #print(f'p: {probability} mfp: {mfp} n: {density} speed: {self.speed}')
+        source_density = w_l*grid.n[index_l] + w_r*grid.n[index_r]
+
+        density = w_l*grid.tracked_ion_density[self.charge_state][index_l] + w_r*grid.tracked_ion_density[self.charge_state][index_r]
+
+        potential = w_l*grid.phi[index_l] + w_r*grid.phi[index_r]
+        #electron_density = grid.n0*np.exp(e*(potential - np.max(grid.phi))/kb/grid.Te)
+
+        #probability = density**2*ionization_rate_coefficient*grid.dx*dt/self.p2c
+
+        probability = density*source_density*ionization_rate_coefficient*grid.dx*dt/self.p2c
 
         if np.random.uniform(0., 1.) < probability and self.charge_state == 0.:
-            print(f'Ionized boron from {self.charge_state} to {self.charge_state+1}!')
             self.charge_state += 1
             grid.add_particles(self.p2c)
 
