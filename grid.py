@@ -42,6 +42,9 @@ class Grid:
         self.added_particles = 0
         self.bc = bc
 
+        self.BC0=0
+        self.BC1=0
+
         self.alpha=alpha
 
         self.omega=omega
@@ -176,6 +179,7 @@ class Grid:
             self.p_old = np.trapz(eta, self.domain)
             self.n0 = 0.9*self.density
             self.rho0 = e*self.n0
+
         else:
             eta = np.exp(self.phi/self.Te/11600.)
             p_new = np.trapz(eta, self.domain)
@@ -228,14 +232,14 @@ class Grid:
             Jd=0  # This term represents the displacement current, I am having troubles including it. and slight doubts about its validity
             #Jd will be included and tested later otherwise i do not get my phd
 
-            #left and right Boundary conditions just to ease calculations not needed explicitly
-            LBC=self.RF_amptitude*np.sin(self.omega*time)
-            RBC=self.RF_amptitude*np.sin(self.omega*time+np.pi)
+            self.BC0=self.RF_amptitude*np.sin(self.omega*time)
+            self.BC1=self.RF_amptitude*np.sin(self.omega*time+np.pi)
+
 
             Ji=self.Ion_flux_right-self.Ion_flux_right #difference between right and left
 
             #equation for Ue might need to be changed check what gives you the right value there is a 3/2 missing somewhere
-            Ue=self.ve*np.cos(self.alpha)*(np.exp(RBC/self.Te/11600.)+np.exp(LBC/self.Te/11600.))/(np.sqrt(np.pi*2))
+            Ue=self.ve*np.cos(self.alpha)*(np.exp(self.BC0*e/kb/self.Te)+np.exp(self.BC1*e/kb/self.Te))/(np.sqrt(np.pi*2))
 
             self.n0=Ji/Ue
 
@@ -364,10 +368,6 @@ class Grid:
         iter_max = 1000
         iter = 0
 
-        #Setting the BC
-        self.BC0=0
-        self.BC1=0
-
         phi = np.zeros(self.ng)
         D = np.zeros((self.ng, self.ng))
 
@@ -381,6 +381,7 @@ class Grid:
             F = np.dot(self.A,phi)
             for i in range(1,self.ng-1):
                 F[i]+= -dx2*c0*np.exp(c1*(phi[i]-self.phi0)) + dx2*c2[i]
+                #print(f'exponential={c1*(phi[i]-self.phi0)}')
 
             F[0]  -= self.BC0
             F[-1] -= self.BC1
