@@ -10,14 +10,15 @@ import itertools
 import pickle
 
 from  pic.dirichlet_neumann import *
-import pic.pic_bca
+import pic.pic_bca_aps
 import fluid.fluid
 
 def main():
     run_tests()
     #pic.dirichlet_neumann.dirichlet_neumann_test()
     #fluid.fluid.simulation()
-    pic.pic_bca.pic_bca_aps()
+
+    pic.pic_bca_aps.pic_bca_aps()
 #end def main
 
 def run_tests():
