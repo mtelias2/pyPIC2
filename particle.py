@@ -623,18 +623,15 @@ class Particle:
             self.active = 0
             self.at_wall = 1
 
+            ind = int(np.floor(self.x/grid.dx))
+            w_l = (self.x%grid.dx)/grid.dx
+            w_r = 1.0 - w_l
 
-            if (grid.Ion_flux_right != None) or (grid.Ion_flux_left != None):
+            if ind < 0.0: #left boundary
+                grid.Ion_flux_left+=(self.r[3]*w_l*self.p2c/(0.5*grid.dx))
 
-                ind = int(np.floor(self.x/grid.dx))
-                w_l = (self.x%grid.dx)/grid.dx
-                w_r = 1.0 - w_l
-
-                if ind == 0: #left boundary
-                    grid.Ion_flux_left+=(self.r[3]*w_l*self.p2c/(0.5*grid.dx))
-
-                if ind == (grid.ng-2): #right boundary
-                    grid.Ion_flux_right+=(self.r[3]*w_r*self.p2c/(0.5*grid.dx))
+            if ind > (grid.ng-2): #right boundary
+                grid.Ion_flux_right+=(self.r[3]*w_r*self.p2c/(0.5*grid.dx))
 
             #this section is needed for calculations of reference density Elias method
             #def Elias in Grid.py
