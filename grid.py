@@ -345,7 +345,8 @@ class Grid:
 
         floating_potential=-self.Te/11600.*np.log(1.1/(17.04*np.cosh(self.BC0/(self.Te/11600.))))
 
-        phi = np.zeros(self.ng,dtype=float)
+        #for faster convergence use an advance guess
+        phi = floating_potential*np.ones(self.ng,dtype=float)
 
 
         dx2 = self.dx*self.dx
