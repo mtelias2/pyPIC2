@@ -9,11 +9,11 @@ import scipy.sparse.linalg as sppla
 import itertools
 import pickle
 
-from particle import *
-from grid import *
-from distributions import *
-from convert import *
-from constants import *
+from pic.particle import *
+from pic.grid import *
+from pic.distributions import *
+#from io.convert import *
+from constants.constants import *
 
 def dirichlet_neumann_test():
     #User inputs
@@ -115,7 +115,7 @@ def dirichlet_neumann_test():
         for particle_index, particle in enumerate(particles):
             if particle.is_active():
 
-                particle.interpolate_electric_field_dirichlet(grid)
+                particle.interpolate_electric_field(grid)
                 particle.push_6D(dt)
 
                 #particle.apply_BCs_dirichlet_neumann(grid)

@@ -1,5 +1,8 @@
 import numpy as np
+
 from constants import *
+from pic.grid import *
+from pic.particle import *
 
 def source_distribution_6D(grid, Ti, mass, vx=0.):
     '''
