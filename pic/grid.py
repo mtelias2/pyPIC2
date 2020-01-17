@@ -3,22 +3,40 @@ import scipy.sparse as spp
 import scipy.sparse.linalg as sppla
 import numpy as np
 import scipy.linalg as la
-
 from constants.constants import *
 
+from constants import *
+import utils
+
 class Grid:
-    def __init__(self, ng, length, Te, bc='dirichlet-dirichlet', tracked_ion_Z = 3):
+    def __init__(self, ng, length, Te, density, dt,omega,RF_amptitude,alpha, bc='dirichlet-dirichlet', tracked_ion_Z = 3):
+        '''
+        This function creates the grid space for the simulations
+        Args:
+            ng          total number of grid grid points
+            length      Total length of simulation in physical units
+            Te          Election temperature
+            bc          Boundary condition type
+                    currently on Drichlet Driechlet
+        '''
         self.ng = ng
         assert self.ng > 1, 'Number of grid points must be greater than 1'
         self.length = length
         assert self.length > 0.0, 'Length must be greater than 0'
         self.domain = np.linspace(0.0, length, ng)
+
         self.dx = self.domain[1] - self.domain[0]
-        self.rho = np.zeros(ng)
+        #assuming uniform grid space
+        self.dt=dt
+
+        self.density=density
+
+        self.rho = np.zeros(ng)#i think density difference of charges
         self.tracked_ion_density = [np.zeros(ng) for _ in range(0, tracked_ion_Z + 1)]
         self.tracked_ion_Z = tracked_ion_Z
-        self.phi = np.zeros(ng)
-        self.E = np.zeros(ng)
+        self.phi = np.zeros(ng) #electric potential
+        self.E = np.zeros(ng) #electric field
+
         self.n = np.zeros(ng)
         self.n0 = None
         self.rho0 = None
@@ -26,6 +44,19 @@ class Grid:
         self.ve = np.sqrt(8./np.pi*kb*self.Te/me)
         self.added_particles = 0
         self.bc = bc
+
+        self.BC0=0
+        self.BC1=0
+
+        self.alpha=alpha
+
+        self.omega=omega
+        self.RF_amptitude=RF_amptitude
+
+        # things needed for Elias algorithm might change them later
+        self.Ion_flux_right=None #at index L
+        self.Ion_flux_left=None  #at index 0
+
         if self.bc == 'dirichlet-dirichlet':
             self._fill_laplacian_dirichlet()
         elif self.bc == 'dirichlet-neumann':
@@ -69,7 +100,7 @@ class Grid:
         return Grid(self.ng, self.length, self.Te)
     #end def copy
 
-    def weight_particles_to_grid_boltzmann(self, particles, dt):
+    def weight_particles_to_grid_boltzmann(self, particles):
         '''
         Weight particle densities and charge densities to the grid using a first
         order weighting scheme.
@@ -115,7 +146,7 @@ class Grid:
                     self.rho[index_r] += particle.charge_state*e*particle.p2c/self.dx*w_r
                     self.n[index_l] += particle.p2c/self.dx*w_l
                     self.n[index_r] += particle.p2c/self.dx*w_r
-                    
+
                 for charge_state in range(0, self.tracked_ion_Z + 1):
                     if particle.Z == self.tracked_ion_Z and particle.charge_state == charge_state:
                         self.tracked_ion_density[charge_state][index_l] += particle.p2c/self.dx*w_l
@@ -127,23 +158,108 @@ class Grid:
             self.n[-1] *= 2
             self.rho[-1] *= 2
 
+
+    def reference_density_update(self,time,method="Elias"):
+        '''
+        This function updates the reference density.
+        3 methods will be programed.
+
+        3 other functions will be called depending on the method.
+
+        Hagelaar 2008
+        kwok 2008
+
+        Args:
+            Ion density profile
+            Previous time step total number of electrons
+            Reference density update method
+
+        No tests programed yet
+
+        '''
+        #Set the reference density for the boltzmann equation
+        if method=='Hagelaar':
+            self._Hag()
+        #elif method=='Kwok':
+        #    self._Kwok()
+        elif method=='Elias':
+            self._Elias(time)
+
+    def _Hag(self):
         if self.n0 == None: #This is only true for the first timestep.
             eta = np.exp(self.phi/self.Te/11600.)
             self.p_old = np.trapz(eta, self.domain)
-            self.n0 = 0.9*np.average(self.n)
+            self.n0 = 0.9*self.density
             self.rho0 = e*self.n0
+
         else:
             eta = np.exp(self.phi/self.Te/11600.)
             p_new = np.trapz(eta, self.domain)
             q_new = eta[0] + eta[-1]
-            r_new = 2.*self.added_particles/dt
-            fn = np.sqrt(self.ve*q_new*dt/p_new)
+            r_new = 2.*self.added_particles/self.dt
+            fn = np.sqrt(self.ve*q_new*self.dt/p_new)
             self.n0 = self.n0*( (1.0 - fn)*self.p_old/p_new + fn - fn*fn/4.) + \
-                r_new*dt/p_new
+                r_new*self.dt/p_new
             self.rho0 = self.n0*e
             self.p_old = p_new
-        #end if
-    #end def weight_particles_to_grid_boltzmann
+
+    #def _Kwok(self):
+    #    if self.n0 == None: #This is only true for the first timestep.
+    #        eta = np.exp(self.phi/self.Te/11600.)
+    #        self.p_old = np.trapz(eta, self.domain)
+    #        self.n0 = 0.9*self.density
+    #        self.rho0 = e*self.n0
+    #        Ne_old=self.density*self.length
+    #    else:
+
+            #new density is old one - total numebr of particles lost
+    #        Ne_new = Ne_old
+
+
+
+
+            #copying the old density
+            #Ne(t)=Ne(t-1) - v Int_walls(ne(x)dx)
+    #        Ne_old=Ne_new - (self.ve/4 * ( ) )
+
+
+    #to be defined my method. This method cannot be used for EM codes though.
+    def _Elias(self,time):
+        """
+        This method is based on Elias 2020.
+        The codes used are to fit the equaiton specified by the paper
+        Each term is explained but the equations are not.
+        """
+
+        if self.n0 == None: #This is only true for the first timestep.
+            self.n0 = 0.9*self.density
+            self.rho0 = e*self.n0
+            ##Things needed for charge conservation in Elias methods
+            self.Ion_flux_right=0 #at index L
+            self.Ion_flux_left=0  #at index 0
+        else:
+
+            Ji=0.0  # This term represents the total ion currents at the walls at time step t
+            Ue=0.0  # This term represents the electron fluid velocity needed to calculate n_0
+            Jd=0.0  # This term represents the displacement current, I am having troubles including it. and slight doubts about its validity
+            #Jd will be included and tested later otherwise i do not get my phd
+
+            self.BC0=self.RF_amptitude*np.sin(self.omega*time)
+
+            self.BC1=self.RF_amptitude*np.sin(self.omega*time+np.pi)
+
+            Ji=self.Ion_flux_right-self.Ion_flux_left #difference between right and left
+
+            #equation for Ue might need to be changed check what gives you the right value there is a 3/2 missing somewhere
+            Ue=self.ve*np.cos(self.alpha)*(np.exp(self.BC0*e/kb/self.Te)+np.exp(self.BC1*e/kb/self.Te))/(np.sqrt(np.pi*2))
+
+            self.n0=Ji/Ue
+
+            #reseting for the next iteration
+            self.Ion_flux_left=0.
+            self.Ion_flux_right=0.
+
+
 
     def differentiate_phi_to_E_dirichlet(self):
         '''
@@ -157,7 +273,7 @@ class Grid:
             E = _____ ~ ___________________
                  dx            2 dx
 
-            And forward difference for boundaries.
+            And forward/backward difference for boundaries.
 
         Tests:
             >>> grid = Grid(6, 5.0, 1.0)
@@ -224,37 +340,6 @@ class Grid:
         self.A[-1,-3] = 1.
     #end def
 
-    def solve_for_phi(self):
-        if self.bc == 'dirichlet-dirichlet':
-            self.solve_for_phi_dirichlet_boltzmann()
-        elif self.bc == 'dirichlet-neumann':
-            self.solve_for_phi_dirichlet_neumann_boltzmann()
-    #end def solve_for_phi
-
-    def solve_for_phi_dirichlet(self):
-        '''
-        Solves Del2 phi = rho.
-
-        Tests:
-            >>> grid = Grid(5, 4.0, 1.0)
-            >>> grid.rho[:] = np.ones(5)
-            >>> grid.solve_for_phi_dirichlet()
-            >>> list(grid.phi)
-            [0.0, 1.5, 2.0, 1.5, 0.0]
-        '''
-        dx2 = self.dx*self.dx
-        phi = np.zeros(self.ng)
-        A = spp.csc_matrix(self.A)
-        phi[:] = -sppla.inv(A).dot(self.rho)*dx2
-        self.phi = phi - np.min(phi)
-    #end def solve_for_phi_dirichlet
-
-    def solve_for_phi(self):
-        if self.bc == 'dirichlet-neumann':
-            self.solve_for_phi_dirichlet_neumann_boltzmann()
-        elif self.bc =='dirichlet-dirichlet':
-            self.solve_for_phi_dirichlet_boltzmann()
-
     def solve_for_phi_dirichlet_boltzmann(self):
         '''
         Solves for the electric potential from the charge density using
@@ -276,33 +361,47 @@ class Grid:
         iter_max = 1000
         iter = 0
 
-        phi = np.zeros(self.ng)
-        D = np.zeros((self.ng, self.ng))
+        floating_potential=-self.Te/11600.*np.log(1.1/(17.04*np.cosh(self.BC0/(self.Te/11600.))))
+
+        #for faster convergence use an advance guess
+        phi = floating_potential*np.ones(self.ng,dtype=float)
+
 
         dx2 = self.dx*self.dx
         c0 = e*self.n0/epsilon0
         c1 = e/kb/self.Te
         c2 = self.rho/epsilon0
+        J  = np.zeros((self.ng,self.ng),dtype=float)
 
         while (residual > tolerance) and (iter < iter_max):
-            F = np.dot(self.A,phi) - dx2*c0*np.exp(c1*(phi)) + dx2*c2
-            F[0] = phi[0]*0.
-            F[-1] = phi[-1]*0.
 
-            np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*phi))
-            D[0,0] = -dx2*c0*c1
-            D[-1,-1] = -dx2*c0*c1
+            F = np.dot(self.A,phi)
+            for i in range(1,self.ng-1):
+                F[i]+= -dx2*c0*np.exp(c1*(phi[i])) + dx2*c2[i]
 
-            J = self.A + D
+            F[0]  -= self.BC0
+            F[-1] -= self.BC1
+
+
+            J= self.A.copy()
+
+            for i in range(1,self.ng-1):
+                J[i][i] -= dx2*c0*c1*np.exp(c1*phi[i])
+
             J = spp.csc_matrix(J)
             #dphi = sppla.inv(J).dot(F)
+
             dphi, _ = sppla.bicgstab(J, F, x0=phi)
+            #the ignored return might be useful to check for convergence.
+
 
             phi = phi - dphi
             residual = dphi.dot(dphi)
+            residual = np.sqrt(residual)
             iter += 1
         #end while
-        self.phi = phi - np.min(phi)
+        self.phi = phi.copy()
+
     #end def solve_for_phi_dirichlet
 
     def smooth_rho(self):
@@ -311,55 +410,6 @@ class Grid:
         rho_smooth[-1] = self.rho[-1]
         self.rho = rho_smooth
     #end def smooth_field_p
-
-    def solve_for_phi_dirichlet_neumann_boltzmann(self):
-        '''
-        Solves for the electric potential from the charge density using
-        Boltzmann (AKA adiabatic) electrons assuming dirichlet-neumann BCs.
-
-        Tests:
-            Tests are hard to write for the boltzmann solver. This one just
-            enforces zero electric potential in a perfectly neutral plasma.
-            >>> grid = Grid(5, 4.0, 1.0)
-            >>> grid.n0 = 1.0/e*epsilon0
-            >>> grid.rho[:] = np.ones(5)
-            >>> grid.n[:] = np.ones(5)/e*epsilon0
-            >>> grid.solve_for_phi_dirichlet_neumann_boltzmann()
-            >>> grid.phi
-            array([0., 0., 0., 0., 0.])
-        '''
-        residual = 1.0
-        tolerance = 1e-3
-        iter_max = 100
-        iter = 0
-
-        phi = self.phi
-        D = np.zeros((self.ng, self.ng))
-
-        dx2 = self.dx*self.dx
-        c0 = e*self.n0/epsilon0
-        c1 = e/kb/self.Te
-        c2 = e*self.n/epsilon0
-
-        while (residual > tolerance) and (iter < iter_max):
-            F = np.dot(self.A,phi) - dx2*c0*np.exp(c1*(phi)) + dx2*c2
-            F[0] = phi[0]
-            F[-1] = 0.
-
-            np.fill_diagonal(D, -dx2*c0*c1*np.exp(c1*(phi)))
-            D[0,0] = -dx2*c0*c1
-            D[-1,-1] = 0.
-
-            J = self.A + D
-            J = spp.csc_matrix(J)
-            dphi = sppla.inv(J).dot(F)
-
-            phi = phi - dphi
-            residual = la.norm(dphi)
-            iter += 1
-        #end while
-        self.phi = phi - np.min(phi)
-    #end def solve_for_phi_dirichlet_neumann
 
     def reset_added_particles(self):
         self.added_particles = 0

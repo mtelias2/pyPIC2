@@ -21,12 +21,12 @@ def dirichlet_neumann_test():
     Te = 10.*11600.
     Ti = 10.*11600.
     ppc = 100
-    ng_per_debye = 3
-    nt_per_oscillation = 5
-    n_ion_transit_times = 5.0
-    num_debye = 1000
+    ng_per_debye = 2
+    nt_per_oscillation = 20
+    n_ion_transit_times = 1.0
+    num_debye = 100
     alpha = 0.0*np.pi/180.0
-    B0 = 0.
+    B0 = 1.
     B = np.array([B0*np.cos(alpha), B0*np.sin(alpha), 0.0])
     E0 = 0.
     E = np.array([E0, E0, E0])
@@ -37,11 +37,20 @@ def dirichlet_neumann_test():
     skip = 1
 
     source = 1000
+    #what is source ??
+
 
     #Physical parameters
     floating_potential = (Te/11600.)*0.5*np.log(1.*mp/2./np.pi/me/(1.+Ti/Te))
+    #probably not used any where just for reference
+
     LD = np.sqrt(kb*Te*epsilon0/e/e/density)
     ion_plasma_frequency = np.sqrt(density*e**2/mp/epsilon0)/2./np.pi
+
+    #user inputs for RF conditions
+    omega=0.5*ion_plasma_frequency
+    print(f'omega:{omega}')
+    RF_amptitude=10.0
 
     #Numerical parameters
     N = ppc*ng_per_debye*num_debye
@@ -62,7 +71,7 @@ def dirichlet_neumann_test():
     print(f'floating potential: {floating_potential}')
 
     #Initialize objects, generators, and counters
-    grid = Grid(ng, L, Te, bc='dirichlet-neumann')
+    grid = Grid(ng, L, Te,density, dt,omega,RF_amptitude,alpha, bc='dirichlet-dirichlet')
 
     particles = [Particle(1.*mp, 1, p2c, Ti, Z=1, B0=B, E0=E, grid=grid, vx=vx) \
         for _ in range(N)]
@@ -89,11 +98,13 @@ def dirichlet_neumann_test():
         time += dt
         print(f'timestep: {time_index}')
         print(f'n0: {grid.n0}\nadded_particles: {grid.added_particles}')
-        grid.weight_particles_to_grid_boltzmann(particles, dt)
+        grid.weight_particles_to_grid_boltzmann(particles)
         #grid.smooth_rho()
         grid.reset_added_particles()
-        grid.solve_for_phi()
-        grid.differentiate_phi_to_E()
+        # options to update density Hagelaar, Elias, Kwok
+        grid.reference_density_update(time,"Elias")
+        grid.solve_for_phi_dirichlet_boltzmann()
+        grid.differentiate_phi_to_E_dirichlet()
 
         #Begin particle loop
 
@@ -108,7 +119,7 @@ def dirichlet_neumann_test():
                 particle.push_6D(dt)
 
                 #particle.apply_BCs_dirichlet_neumann(grid)
-                particle.apply_BCs_dirichlet_reflection(grid)
+                particle.apply_BCs_dirichlet(grid)
 
                 positions[particle_index] = particle.x
                 velocities[particle_index] = particle.v_x/particle.vth
@@ -137,18 +148,18 @@ def dirichlet_neumann_test():
         plt.plot(np.linspace(0.0, grid.length, grid.ng), grid.phi)
         plt.pause(0.01)
 
-        plt.figure(3)
-        plt.clf()
-        plt.plot(np.linspace(0.0, grid.length, grid.ng), grid.rho/e)
-        plt.pause(0.01)
+#        plt.figure(3)
+#        plt.clf()
+#        plt.plot(np.linspace(0.0, grid.length, grid.ng), grid.rho/e)
+#        plt.pause(0.01)
 
-        plt.figure(4)
-        plt.clf()
-        heights, bins, _ = plt.hist(velocities_boundary, bins = np.linspace(-9*vth, 9*vth, 100), density=True)
-        dist = [2*gaussian_distribution(bin, vx, vth) for bin in bins]
-        #dist /= np.max(dist)
-        plt.plot(bins, dist)
-        plt.pause(0.01)
+#        plt.figure(4)
+#        plt.clf()
+#        heights, bins, _ = plt.hist(velocities_boundary, bins = np.linspace(-9*vth, 9*vth, 100), density=True)
+#        dist = [2*gaussian_distribution(bin, vx, vth) for bin in bins]
+#        #dist /= np.max(dist)
+#        plt.plot(bins, dist)
+#        plt.pause(0.01)
 
     breakpoint()
 #end def pic_bca
