@@ -675,6 +675,7 @@ class Particle:
         if (self.r[0] < 0.0) or (self.r[0] > grid.length):
             self.active = 0
             self.at_wall = 1
+
         #end if
     #end def apply_BCs_dirichlet
 

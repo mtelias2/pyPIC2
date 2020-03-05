@@ -6,9 +6,9 @@ from constants.constants import *
 from fractal_tridyn.utils.generate_ftridyn_input import *
 
 def pic_bca_aps():
-    density = 1e20
+    density = 5e16
 
-    Ti = 1.*11600
+    Ti = 10.*11600
     Te = 10.*11600
 
     wall = lithium
@@ -44,6 +44,9 @@ def pic_bca_aps():
     LD = np.sqrt(kb*Te*epsilon0/e/e/density)
     ion_plasma_frequency = np.sqrt(density*e**2/mp/epsilon0)/2./np.pi
 
+    omega=ion_plasma_frequency*2.0*np.pi
+    RF_amptitude=10*Te
+
     #Numerical parameters
     N = ppc*ng_per_debye*num_debye
     source_N = N
@@ -66,7 +69,7 @@ def pic_bca_aps():
             grid = pickle.load(grid_file)
         N = len(particles)
     else:
-        grid = Grid(ng, L, Te, bc = 'dirichlet-dirichlet', tracked_ion_Z = 3)
+        grid = Grid(ng, L, Te, density,dt,omega,RF_amptitude,alpha, bc = 'dirichlet-dirichlet', tracked_ion_Z = 3)
         particles = [Particle(source['m'], 1, p2c, Ti, Z=source['Z'], B0=B, E0=E, grid=grid)
             for _ in range(N)]
 
@@ -174,8 +177,9 @@ def pic_bca_aps():
             particle.apply_BCs_dirichlet(grid)
 
         #Grid calculations
-        grid.weight_particles_to_grid_boltzmann(particles, dt)
-        grid.smooth_rho()
+        grid.weight_particles_to_grid_boltzmann(particles)
+        #grid.smooth_rho()
+        grid.reference_density_update(time,"Elias")
         grid.reset_added_particles()
         grid.solve_for_phi_dirichlet_boltzmann()
         grid.differentiate_phi_to_E_dirichlet()
