@@ -12,7 +12,7 @@ def pic_bca_aps():
     Te = 10.*11600
 
     wall = lithium
-    source = deuterium
+    source = hydrogen
 
     ng_per_debye = 3
     num_debye = 200
@@ -23,7 +23,7 @@ def pic_bca_aps():
     ppc = 50
 
     psi = 0.0
-    B0 = 2.5
+    B0 = 1
     E0 = 0.
 
     deletion_step = 1
@@ -41,11 +41,15 @@ def pic_bca_aps():
 
     #Physical parameters
     floating_potential = (Te/11600.)*0.5*np.log(1.*mp/2./np.pi/me/(1.+Ti/Te))
+    print("floating potential value",floating_potential)
+
     LD = np.sqrt(kb*Te*epsilon0/e/e/density)
     ion_plasma_frequency = np.sqrt(density*e**2/mp/epsilon0)/2./np.pi
 
     omega=ion_plasma_frequency*2.0*np.pi
-    RF_amptitude=10*Te
+    #After you check if the code works on regular sheaths check how it works on RF sheaths
+    #RF_amptitude=10*Te
+    RF_amptitude=0*Te
 
     #Numerical parameters
     N = ppc*ng_per_debye*num_debye

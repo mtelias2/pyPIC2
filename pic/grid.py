@@ -136,10 +136,11 @@ class Grid:
                 w_l = 1.0 - w_r
 
                 #this is to calculate currents at the boundaries
+                #right now it is codded as 1D. Extrapolation to 3D is straight forward
                 if index_l==0:
-                    self.Ion_flux_left+= particle*particle.charge_state*particle.r[3]*w_l*2.0*particle.p2c/self.dx
+                    self.Ion_flux_left+= particle.charge_state*particle.r[3]*w_l*2.0*particle.p2c/self.dx
                 elif index_r==self.ng-1:
-                    self.Ion_flux_right+= particle*particle.charge_state*particle.r[3]*w_r*2.0*particle.p2c/self.dx
+                    self.Ion_flux_right+= particle.charge_state*particle.r[3]*w_r*2.0*particle.p2c/self.dx
 
 
                 if particle.charge_state > 0:
@@ -231,7 +232,10 @@ class Grid:
             #equation for Ue is modified to include all factors other than n0 in flux equaiton
             Ue=self.ve*np.cos(self.alpha)*(np.exp(self.BC0*e/kb/self.Te)+np.exp(self.BC1*e/kb/self.Te))/4.0
 
-            self.n0=Ji/Ue
+            #added charges adding them
+            r_new=self.added_particles/self.dt
+
+            self.n0=(Ji+r_new)/Ue
 
             #reseting for the next iteration
             self.Ion_flux_left=0.
