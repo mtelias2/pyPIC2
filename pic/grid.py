@@ -3,6 +3,8 @@ import scipy.sparse as spp
 import scipy.sparse.linalg as sppla
 import numpy as np
 import scipy.linalg as la
+import math
+
 
 from constants.constants import *
 
@@ -44,6 +46,11 @@ class Grid:
         self.RF_amptitude=RF_amptitude
         self.BC0=0
         self.BC1=0
+
+        #the matrix is used to calculate the Displacment current from the 2 previous time steps.
+        #Index one is time steps, 0 is 2 time steps back, 1 is 1 time step back
+        #index 2 is boundary index. Hard coded to 1 D 2 boundaries now
+        self.Boundary_electric_field=np.zeros((2,2))
 
         # things needed for Elias algorithm might change them later
         self.Ion_flux_right=0.0 #at index L
@@ -220,10 +227,12 @@ class Grid:
             Jd=0.0  # This term represents the displacement current, I am having troubles including it. and slight doubts about its validity
             #TODO
             #Jd algorithm developed and tested
+            #learning rate for algorithm
+            LR=5.0
 
-            self.BC0=self.RF_amptitude*np.sin(self.omega*time)
+            self.BC0=self.RF_amptitude*np.sin(self.omega*time*self.dt)
 
-            self.BC1=self.RF_amptitude*np.sin(self.omega*time+np.pi)
+            self.BC1=self.RF_amptitude*np.sin(self.omega*time*self.dt + np.pi)
 
             #if you want this to be 3D or more general you need to account for flux at all walls
             Ji=self.Ion_flux_right-self.Ion_flux_left #difference between right and left
@@ -235,7 +244,51 @@ class Grid:
             #added charges adding them
             r_new=self.added_particles/self.dt
 
-            self.n0=(Ji+r_new)/Ue
+            if self.omega==0:
+
+                self.n0=(Ji+r_new)/Ue
+
+            else:
+                tol         =  1.0e-3
+                residual    =  1.0
+
+                Iteration=0.0
+
+
+
+
+                #3 timesteps needs for forward difference on displacement current
+                while (time >3) and (residual > tol):
+                    n0k=self.n0
+                    #solves the boltzmann equation at every iteration
+                    self.solve_for_phi_dirichlet_boltzmann()
+                    self.differentiate_phi_to_E_dirichlet()
+
+                    Right_Jd=(3.0*self.E[-1]/2.0)+(-2.0*self.Boundary_electric_field[1][1])+(self.Boundary_electric_field[0][1]/2.0)
+
+                    Left_Jd=(3.0*self.E[0]/2.0)+(-2.0*self.Boundary_electric_field[1][0])+(self.Boundary_electric_field[0][0]/2.0)
+
+                    Jd=epsilon0*(Right_Jd-Left_Jd)/self.dt
+
+                    self.n0=(Ji+Jd)/Ue
+                    residual=math.fabs((self.n0-n0k)/n0k)
+
+                    if self.n0 >0.0:
+                        self.n0=(self.n0+LR*n0k)/(LR+1.0)
+                        Iteration+=1
+
+                    else:
+                        self.n0=n0k/1.05
+
+                    if (Iteration%50)== 0:
+                        LR+=1.0
+
+
+                self.Boundary_electric_field[0][0]=self.Boundary_electric_field[1][0]
+                self.Boundary_electric_field[0][1]=self.Boundary_electric_field[1][1]
+
+                self.Boundary_electric_field[1][0]=self.E[0]
+                self.Boundary_electric_field[1][1]=self.E[-1]
 
             #reseting for the next iteration
             self.Ion_flux_left=0.

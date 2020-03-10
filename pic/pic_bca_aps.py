@@ -1,7 +1,7 @@
 from pic.particle import *
 from pic.grid import *
 from pic.distributions import *
-from io import *
+from pic.convert import *
 from constants.constants import *
 from fractal_tridyn.utils.generate_ftridyn_input import *
 
@@ -14,10 +14,10 @@ def pic_bca_aps():
     wall = lithium
     source = hydrogen
 
-    ng_per_debye = 3
-    num_debye = 200
+    ng_per_debye = 2
+    num_debye = 100
 
-    nt_per_oscillation = 10
+    nt_per_oscillation = 20
     n_ion_transit_times = 1
 
     ppc = 50
@@ -48,8 +48,8 @@ def pic_bca_aps():
 
     omega=ion_plasma_frequency*2.0*np.pi
     #After you check if the code works on regular sheaths check how it works on RF sheaths
-    #RF_amptitude=10*Te
-    RF_amptitude=0*Te
+    RF_amptitude=10*Te
+    #RF_amptitude=0*Te
 
     #Numerical parameters
     N = ppc*ng_per_debye*num_debye
@@ -183,7 +183,7 @@ def pic_bca_aps():
         #Grid calculations
         grid.weight_particles_to_grid_boltzmann(particles)
         #grid.smooth_rho()
-        grid.reference_density_update(time,"Elias")
+        grid.reference_density_update(time_index,"Elias")
         grid.reset_added_particles()
         grid.solve_for_phi_dirichlet_boltzmann()
         grid.differentiate_phi_to_E_dirichlet()
@@ -409,8 +409,8 @@ def pic_bca_aps():
             plt.pause(0.0001)
 
     #Create movies from .png plots
-    c.convert('.', 'pic_bca_ps', 0,timesteps, plot_step, 'out_ps.gif')
-    c.convert('.', 'pic_bca_phi', 0,timesteps, plot_step, 'out_phi.gif')
+    convert('.', 'pic_bca_ps', 0,timesteps, plot_step, 'out_ps.gif')
+    convert('.', 'pic_bca_phi', 0,timesteps, plot_step, 'out_phi.gif')
 
     print(np.sum(iead_out_source))
     print(np.sum(iead_out_wall))
