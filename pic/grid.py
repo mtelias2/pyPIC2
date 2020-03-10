@@ -251,9 +251,7 @@ class Grid:
             else:
                 tol         =  1.0e-3
                 residual    =  1.0
-
-                Iteration=0.0
-
+                Iteration   =  0.0
 
 
 
@@ -269,7 +267,6 @@ class Grid:
                     Left_Jd=(3.0*self.E[0]/2.0)+(-2.0*self.Boundary_electric_field[1][0])+(self.Boundary_electric_field[0][0]/2.0)
 
                     Jd=epsilon0*(Right_Jd-Left_Jd)/self.dt
-
                     self.n0=(Ji+Jd)/Ue
                     residual=math.fabs((self.n0-n0k)/n0k)
 

@@ -421,7 +421,6 @@ class Particle:
         R_m3_s = [R/1e6 for R in R_cm3_s]
 
         ionization_rate_coefficient = np.interp(temperature, Te_K, R_m3_s)
-
         index_l = int(np.floor(self.x/grid.dx))
         index_r = (index_l + 1)
         w_r = (self.x%grid.dx)/grid.dx

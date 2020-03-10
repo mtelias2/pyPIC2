@@ -27,7 +27,7 @@ def pic_bca_aps():
     E0 = 0.
 
     deletion_step = 1
-    plot_step = 10
+    plot_step = 5
 
     do_plots = True
     checkpoint_saving = 100
@@ -48,7 +48,7 @@ def pic_bca_aps():
 
     omega=ion_plasma_frequency*2.0*np.pi
     #After you check if the code works on regular sheaths check how it works on RF sheaths
-    RF_amptitude=10*Te
+    RF_amptitude=10*Te/11600
     #RF_amptitude=0*Te
 
     #Numerical parameters
@@ -185,8 +185,10 @@ def pic_bca_aps():
         #grid.smooth_rho()
         grid.reference_density_update(time_index,"Elias")
         grid.reset_added_particles()
-        grid.solve_for_phi_dirichlet_boltzmann()
-        grid.differentiate_phi_to_E_dirichlet()
+        print(np.max(grid.phi))
+
+        #grid.solve_for_phi_dirichlet_boltzmann()
+        #grid.differentiate_phi_to_E_dirichlet()
 
         #particle loop
         redeposited = 0
@@ -344,69 +346,69 @@ def pic_bca_aps():
 
             plt.scatter(positions, velocities, s=sizes, c=colors)
             plt.axis([0.0, grid.length/4, -8., 8.])
-            plt.draw()
+            #plt.draw()
             plt.savefig('pic_bca_ps'+str(time_index))
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
             plt.figure(2)
             plt.clf()
             plt.plot(np.linspace(0., grid.length, grid.ng), grid.phi)
-            plt.axis([0.0, grid.length, 0.0, np.max(grid.phi)])
-            plt.draw()
+            print(np.max(grid.phi))
+            plt.axis([0.0, grid.length,-100, +200])
+            #plt.draw()
             plt.savefig('pic_bca_phi'+str(time_index))
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
             plt.figure(3)
             plt.clf()
             plt.plot(np.linspace(0., grid.length, grid.ng), grid.n)
-            plt.plot(np.linspace(0., grid.length, grid.ng), grid.n0*np.exp(e*(grid.phi - np.max(grid.phi))/kb/grid.Te))
-            print(grid.n0, np.max(grid.n))
-            #plt.axis([0.0, grid.length, 0.0, np.max(grid.rho)])
-            plt.draw()
+            plt.plot(np.linspace(0., grid.length, grid.ng), grid.n0*np.exp(e*(grid.phi)/kb/grid.Te))
+            plt.axis([0.0, grid.length, 0.0, np.max(grid.rho)])
+            ##plt.draw()
             plt.savefig('pic_bca_rho'+str(time_index))
-            plt.pause(0.0001)
+            ##plt.pause(0.0001)
 
             plt.figure(4)
             plt.clf()
             plt.pcolormesh(angles_iead[:-1], energies_iead[:-1], iead_source)
             #plt.contourf(angles_iead[:-1], energies_iead[:-1], iead_source)
             plt.title(f'{source["symbol"]} IEAD ')
-            plt.draw()
+            #plt.draw()
             plt.savefig('pic_bca_iead_He')
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
             plt.figure(5)
             plt.clf()
             plt.pcolormesh(angles_iead[:-1], energies_iead[:-1], iead_wall)
             plt.title(f'{wall["symbol"]} IEAD ')
-            plt.draw()
+            #plt.draw()
             plt.savefig('pic_bca_iead_Au')
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
             plt.figure(6)
             plt.clf()
             plt.pcolormesh(angles_iead[:-1], energies_iead[:-1], iead_out_source)
             plt.title(f'{source["symbol"]} Flux Out ')
-            plt.draw()
+            #plt.draw()
             plt.savefig('pic_bca_out_He')
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
             plt.figure(7)
             plt.clf()
             plt.pcolormesh(angles_iead[:-1], energies_iead[:-1], iead_out_wall)
             plt.title(f'{wall["symbol"]} Flux Out ')
-            plt.draw()
+            #plt.draw()
             plt.savefig('pic_bca_out_Au')
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
             plt.figure(8)
             plt.clf()
             for charge_state in range(0, grid.tracked_ion_Z + 1):
                 plt.plot(np.linspace(0., grid.length, grid.ng), (grid.tracked_ion_density[charge_state] + grid.tracked_ion_density[charge_state][::-1])/2.)
             plt.axis([0.0, grid.length/2, 0.0, max([np.max(density) for density in grid.tracked_ion_density])])
-            plt.draw()
+            #plt.draw()
             plt.savefig('pic_bca_tracked_ion_densities'+str(time_index))
-            plt.pause(0.0001)
+            #plt.pause(0.0001)
 
     #Create movies from .png plots
     convert('.', 'pic_bca_ps', 0,timesteps, plot_step, 'out_ps.gif')
